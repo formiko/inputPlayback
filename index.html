@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Input Recording and Playback</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        textarea {
+            width: 80%;
+            height: 200px;
+            margin: 20px auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+
+<body>
+<textarea id="inputText"></textarea>
+<button onclick="replayInput()">Playback at fixed speed</button>
+<button onclick="replayRealTime()">Playback at real speed</button>
+<button onclick="exportToJson()">Export as JSON file</button>
+<button onclick="importFromJson()">Import JSON file</button>
+
+<script>
+    let inputTimestamps = [];
+    let inputValues = [];
+
+    const inputTextarea = document.getElementById('inputText');
+
+    inputTextarea.addEventListener('input', (event) => {
+        const currentTime = new Date().getTime();
+        inputTimestamps.push(currentTime);
+        const currentValue = event.target.value;
+        inputValues.push(currentValue);
+        console.log("Timestamp:", currentTime);
+        console.log("Textarea content:", currentValue);
+        console.log("New input text:", event.data);
+    });
+
+    function replayInput() {
+        let index = 0;
+        const intervalId = setInterval(() => {
+            if (index < inputValues.length) {
+                inputTextarea.value = inputValues[index];
+                index++;
+            } else {
+                clearInterval(intervalId);
+            }
+        }, 100);
+    }
+
+    function replayRealTime(index = 0, startTime) {
+        if (index >= inputValues.length) return;
+        if (index === 0) {
+            startTime = inputTimestamps[index];
+        }
+        inputTextarea.value = inputValues[index];
+        const nextTimestampDiff = index === inputValues.length - 1? 0 : inputTimestamps[index + 1] - inputTimestamps[index];
+        setTimeout(() => replayRealTime(index + 1, startTime), nextTimestampDiff);
+    }
+
+    function exportToJson() {
+        const data = inputValues.map((content, index) => ({
+            time: inputTimestamps[index],
+            content: content
+        }));
+        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'input_records.json';
+        a.click();
+    }
+
+    function importFromJson() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const contents = event.target.result;
+                const importedData = JSON.parse(contents);
+                inputValues = importedData.map(item => item.content);
+                inputTimestamps = importedData.map(item => item.time);
+                inputTextarea.value = inputValues[inputValues.length - 1];
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+</script>
+</body>
+
+</html>
